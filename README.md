@@ -13,14 +13,14 @@ tags:
   - grpo
   - react
   - verifiable-rewards
-  - nanoclaw
+  - clawloop
 size_categories:
   - 10K<n<100K
-pretty_name: Nanoclaw Verifiable Agent RL Tasks
+pretty_name: ClawLoop Verifiable Agent RL Tasks
 ---
 
 <div align="center">
-<h1>Nanoclaw: Less Harness, More Signal</h1>
+<h1>ClawLoop: Less Harness, More Signal</h1>
 <h2>Verifiable Reinforcement Learning for Long-Horizon Tool-Using Agents</h2>
 
 [![Paper](https://img.shields.io/badge/Paper-Manuscript-5f16a8?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](paper/clawAgent_main.pdf)
@@ -33,17 +33,17 @@ pretty_name: Nanoclaw Verifiable Agent RL Tasks
 
 **News!!!**
 
-- [2026/09] We release the Nanoclaw task corpus, ClawLoop recipe, AAM integration, paper artifacts, and portable Qwen3.5-9B/27B launch profiles.
+- [2026/09] We release the ClawLoop task corpus, ClawLoop recipe, AAM integration, paper artifacts, and portable Qwen3.5-9B/27B launch profiles.
 - [2026/09] The JSONL release contains 6,970 tasks that passed strict export validation and environment-builder smoke tests.
 - [2026/09] The README includes the full-resolution PDF figure gallery used in the manuscript.
 
 ## Less Harness, More Signal
 
-Nanoclaw is a research release for **verifiable reinforcement learning of long-horizon, tool-using agents**. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and packages the task corpus, execution recipe, masking implementation, and reproducibility materials in one Hub-ready project.
+ClawLoop is a research release for **verifiable reinforcement learning of long-horizon, tool-using agents**. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and packages the task corpus, execution recipe, masking implementation, and reproducibility materials in one Hub-ready project.
 
 The central premise is simple: an agent should be trained against the **state it creates**, not against a single prescribed tool trajectory. Every rollout therefore runs in an isolated workspace, uses a small set of general file and shell tools, and receives reward from a verifier that inspects the terminal workspace. Search order, edits, retries, and recovery remain open to the policy.
 
-![Nanoclaw execution loop](paper/harness_draft.png)
+![ClawLoop execution loop](paper/harness_draft.png)
 
 *ClawLoop keeps the task, isolated workspace, atomic tools, multi-turn interaction, and terminal verifier in the policy-gradient loop while removing product-layer state such as session management, plugin registries, and long-term memory.*
 
@@ -60,7 +60,7 @@ In-harness RL exposes two coupled failure modes:
 
 **Artifact consistency note.** The included `fig_cost2.png` labels the tool-only bar as 81% GPU utilization, while an earlier paragraph in `paper/main.tex` states 61%. The source materials should be reconciled before using either number in a camera-ready release; the 14% in-harness value is consistent across the figure and manuscript.
 
-## The Nanoclaw approach
+## The ClawLoop approach
 
 ### ClawLoop
 
@@ -136,12 +136,12 @@ Validate the release without executing any task code:
 python scripts/validate_release.py data/tasks.jsonl
 ```
 
-Restore the JSONL into the directory layout expected by the Nanoclaw runtime:
+Restore the JSONL into the directory layout expected by the ClawLoop runtime:
 
 ```bash
 python scripts/restore_hf_dataset.py \
   data/tasks.jsonl \
-  --output-dir /tmp/nanoclaw_tasks
+  --output-dir /tmp/clawloop_tasks
 ```
 
 The restore operation writes files only. It never imports or executes `env_builder.py` or a verifier. The resulting tree contains both the canonical `tasks/data_*` and `scripts/data_*/verify_workplace.py` layout and the manifest-relative files needed by flat-layout discovery.
@@ -160,7 +160,7 @@ The recipe is an adapter for a compatible [VERL](https://github.com/volcengine/v
 
 ```bash
 VERL_ROOT=/path/to/verl \
-BASE_TASKS=/tmp/nanoclaw_tasks \
+BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-9B \
 bash recipe/nanoclaw_recipe/train_9b.sh
 ```
@@ -169,18 +169,20 @@ For the 27B profile:
 
 ```bash
 VERL_ROOT=/path/to/verl \
-BASE_TASKS=/tmp/nanoclaw_tasks \
+BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-27B \
 bash recipe/nanoclaw_recipe/train_27b.sh
 ```
 
 Both profiles preserve the paper-aligned defaults: 8,192 prompt tokens, 22,768 response tokens, 16,384 assistant tokens, 8,192 tool-observation tokens, 35 turns, FSDP2, async vLLM rollout, Qwen3-Coder multi-turn formatting, GRPO with fixed low-variance KL, eight responses per prompt, and AAM enabled. Override hardware and experiment settings through environment variables or extra Hydra arguments. `train_half_turn.cluster.sh` is the historical NPU/ModelArts launcher and is retained only for provenance; it contains cluster-specific installation and path assumptions.
 
-The implementation and integration details are documented in [recipe/README.md](recipe/README.md), [recipe/nanoclaw_recipe/README.md](recipe/nanoclaw_recipe/README.md), and [patches/README.md](patches/README.md). CPU regression tests cover delayed positive-advantage masking and final-answer bonus behavior.
+The implementation and integration details are documented in [recipe/README.md](recipe/README.md), the [ClawLoop recipe runbook](recipe/nanoclaw_recipe/README.md), and [patches/README.md](patches/README.md). CPU regression tests cover delayed positive-advantage masking and final-answer bonus behavior.
+
+**Compatibility note.** The Python package and import paths are still named `nanoclaw_recipe` in the code snapshot so existing VERL integrations remain loadable. `ClawLoop` is the formal public project name; these are internal compatibility identifiers only.
 
 ### Inference
 
-The runtime-only path is implemented in [recipe/nanoclaw_recipe/inference.py](recipe/nanoclaw_recipe/inference.py). It reuses the same task discovery, multi-turn tool loop, workspace isolation, and Qwen3-Coder formatting as training, but does not call the task verifier during rollout. Evaluation can therefore be performed independently after trajectories are collected.
+The runtime-only path is implemented in [ClawLoop inference](recipe/nanoclaw_recipe/inference.py). It reuses the same task discovery, multi-turn tool loop, workspace isolation, and Qwen3-Coder formatting as training, but does not call the task verifier during rollout. Evaluation can therefore be performed independently after trajectories are collected.
 
 ## Paper and Figure Gallery
 
@@ -201,7 +203,7 @@ The two PNG files are lightweight previews used for inline rendering above. The 
 
 ## Acknowledgement
 
-We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the Nanoclaw adapter is built.
+We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the ClawLoop adapter is built.
 
 ## Uploading to the Hub
 
@@ -210,8 +212,8 @@ This directory is the intended upload root. Do not upload the parent workspace, 
 ```bash
 cd /home/hyx/hf_up/nanoclaw_hf
 git lfs install
-hf repo create <namespace>/nanoclaw-tasks --repo-type dataset
-hf upload <namespace>/nanoclaw-tasks . . --repo-type dataset
+hf repo create <namespace>/clawloop-tasks --repo-type dataset
+hf upload <namespace>/clawloop-tasks . . --repo-type dataset
 ```
 
 The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub Dataset repository is recommended because the primary artifact is task data; the same directory can also be mirrored as a code repository for the recipe and paper materials.
@@ -220,14 +222,14 @@ The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub D
 
 Verifiers and environment builders are arbitrary benchmark code. Run them only in a container with network isolation, resource limits, and a disposable filesystem. The validator reports eight absolute-path warnings inherited from synthetic task content; these are example paths inside task fixtures, not paths used by the release tooling.
 
-Nanoclaw-specific code and documentation are MIT licensed. VERL-derived integration files remain subject to the upstream Apache-2.0 license. The AAAI author-kit files and the source benchmark export may have additional redistribution terms; review [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before making the Hub repository public.
+ClawLoop-specific code and documentation are MIT licensed. VERL-derived integration files remain subject to the upstream Apache-2.0 license. The AAAI author-kit files and the source benchmark export may have additional redistribution terms; review [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before making the Hub repository public.
 
 ## Citation
 
 ```bibtex
-@article{nanoclaw2026,
+@article{clawloop2026,
   title = {Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents},
   year  = {2026},
-  note  = {Nanoclaw release; manuscript source and task dataset included}
+  note  = {ClawLoop release; manuscript source and task dataset included}
 }
 ```
