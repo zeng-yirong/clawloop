@@ -1,0 +1,3 @@
+# Optional dependencies for loading or converting the release dataset.
+datasets>=2.18.0
+
