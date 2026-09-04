@@ -253,18 +253,7 @@ The plot compares success rate with average generated tokens per episode across 
 
 We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the ClawLoop adapter is built.
 
-## Uploading to the Hub
 
-This directory is the intended upload root. Do not upload the parent workspace, which contains unrelated source exports and experiment files.
-
-```bash
-cd /home/hyx/hf_up/nanoclaw_hf
-git lfs install
-hf repo create <namespace>/clawloop-tasks --repo-type dataset
-hf upload <namespace>/clawloop-tasks . . --repo-type dataset
-```
-
-The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub Dataset repository is recommended because the primary artifact is task data; the same directory can also be mirrored as a code repository for the recipe and paper materials.
 
 ## Safety and licensing
 
