@@ -26,7 +26,7 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 [![Paper](https://img.shields.io/badge/Paper-Manuscript-5f16a8?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](paper/clawAgent_main.pdf)
 [![Dataset](https://img.shields.io/badge/Dataset-6%2C970%20Tasks-4d8cd8?style=for-the-badge&logo=huggingface&logoColor=white)](data/tasks.jsonl)
 [![Hugging Face Dataset](https://img.shields.io/badge/Hugging%20Face-clawLooop%2Fclawloop--data-ffd21e?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
-[![Recipe](https://img.shields.io/badge/Recipe-VERL%20%2B%20AAM-63cad3?style=for-the-badge&logo=pytorch&logoColor=white)](recipe/README.md)
+[![Integrated VERL](https://img.shields.io/badge/Code-Integrated%20VERL%20%2B%20AAM-63cad3?style=for-the-badge&logo=pytorch&logoColor=white)](verl/)
 [![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 </div>
 
@@ -34,19 +34,32 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 
 **News!!!**
 
-- [2026/09] We release the ClawLoop task corpus, ClawLoop recipe, AAM integration, paper artifacts, and portable Qwen3.5-9B/27B launch profiles.
+- [2026/09] We release the ClawLoop task corpus, paper artifacts, and the complete modified VERL source tree with ClawLoop and AAM integrated in place.
 - [2026/09] The JSONL release contains 6,970 tasks that passed strict export validation and environment-builder smoke tests.
 - [2026/09] The README includes directly rendered PNG previews, with the full-resolution PDF figures preserved beside them.
 
 ## Less Harness, More Signal
 
-ClawLoop is a research release for **verifiable reinforcement learning of long-horizon, tool-using agents**. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and packages the task corpus, execution recipe, masking implementation, and reproducibility materials in one Hub-ready project.
+ClawLoop is a research release for **verifiable reinforcement learning of long-horizon, tool-using agents**. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and packages the task corpus, the complete modified VERL implementation, AAM, and reproducibility materials in one project.
 
 The central premise is simple: an agent should be trained against the **state it creates**, not against a single prescribed tool trajectory. Every rollout therefore runs in an isolated workspace, uses a small set of general file and shell tools, and receives reward from a verifier that inspects the terminal workspace. Search order, edits, retries, and recovery remain open to the policy.
 
 ![ClawLoop execution loop](paper/harness_draft.png)
 
 *ClawLoop keeps the task, isolated workspace, atomic tools, multi-turn interaction, and terminal verifier in the policy-gradient loop while removing product-layer state such as session management, plugin registries, and long-term memory.*
+
+## Release layout
+
+This project is distributed as a single, runnable source tree. The `verl/` directory is the complete modified VERL checkout; ClawLoop integration is already applied inside it.
+
+| Path | Contents |
+| --- | --- |
+| [`verl/`](verl/) | Full VERL framework plus integrated ClawLoop environment, agent loop, reward path, AAM support, tests, and launchers. |
+| [`data/`](data/) | Validated task corpus and export metadata. |
+| [`scripts/`](scripts/) | Dataset restoration, conversion, and validation utilities. |
+| [`paper/`](paper/) | Manuscript, figures, and directly rendered previews. |
+
+There is no separate `patches/` directory to apply and no external `recipe/` checkout to install. Install and run the framework directly from `verl/`.
 
 ## The ClawLoop environment
 
@@ -97,7 +110,7 @@ The environment setup subprocess has a 120 s default timeout. Verifier and build
 
 This narrow contract—**task specification → isolated state → atomic actions → terminal verification**—is the systems reason ClawLoop reduces environment overhead while preserving inspectable, state-based rewards.
 
-Implementation anchors: [`nanoclaw.py`](recipe/nanoclaw_recipe/nanoclaw.py) (VERL tool and reward boundary), [`common.py`](recipe/nanoclaw_recipe/common.py) (task discovery and bundle handling), [`runtime/tools.py`](recipe/nanoclaw_recipe/runtime/tools.py) (path and command guards), and [`runtime/runner.py`](recipe/nanoclaw_recipe/runtime/runner.py) (standalone rollout lifecycle).
+Implementation anchors live inside the integrated VERL tree: [`nanoclaw.py`](verl/nanoclaw_recipe/nanoclaw.py) (VERL tool and reward boundary), [`common.py`](verl/nanoclaw_recipe/common.py) (task discovery and bundle handling), [`runtime/tools.py`](verl/nanoclaw_recipe/runtime/tools.py) (path and command guards), [`nanoclaw_support.py`](verl/verl/experimental/agent_loop/nanoclaw_support.py) (agent-loop integration), and [`ray_trainer.py`](verl/verl/trainer/ppo/ray_trainer.py) (trainer integration).
 
 ## What the paper studies
 
@@ -216,33 +229,40 @@ python scripts/prepare_hf_dataset.py \
 
 ### Training
 
-The recipe is an adapter for a compatible [VERL](https://github.com/volcengine/verl) checkout; the full upstream framework is intentionally not vendored here. The public launchers were distilled from the validated Qwen3.5-9B and Qwen3.5-27B experiment scripts:
+This release vendors the **complete modified VERL checkout** under [`verl/`](verl/). ClawLoop workspace tools, verifier-based rewards, multi-turn agent-loop support, Qwen3.5 model support, and AAM-related trainer changes are already integrated into that tree. There is no separate patch application step and no external recipe checkout to assemble.
+
+Install the bundled framework in editable mode:
 
 ```bash
-VERL_ROOT=/path/to/verl \
+cd /path/to/nanoclaw_hf/verl
+pip install -e .
+```
+
+Restore the task JSONL first (as shown above), then launch the validated profiles directly from the integrated VERL tree:
+
+```bash
+cd /path/to/nanoclaw_hf/verl
 BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-9B \
-bash recipe/nanoclaw_recipe/train_9b.sh
+bash nanoclaw_recipe/train_9b.sh
 ```
 
 For the 27B profile:
 
 ```bash
-VERL_ROOT=/path/to/verl \
+cd /path/to/nanoclaw_hf/verl
 BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-27B \
-bash recipe/nanoclaw_recipe/train_27b.sh
+bash nanoclaw_recipe/train_27b.sh
 ```
 
-Both profiles preserve the paper-aligned defaults: 8,192 prompt tokens, 22,768 response tokens, 16,384 assistant tokens, 8,192 tool-observation tokens, 35 turns, FSDP2, async vLLM rollout, Qwen3-Coder multi-turn formatting, GRPO with fixed low-variance KL, eight responses per prompt, and AAM enabled. Override hardware and experiment settings through environment variables or extra Hydra arguments. `train_half_turn.cluster.sh` is the historical NPU/ModelArts launcher and is retained only for provenance; it contains cluster-specific installation and path assumptions.
+Both profiles preserve the paper-aligned defaults: 8,192 prompt tokens, 22,768 response tokens, 16,384 assistant tokens, 8,192 tool-observation tokens, 35 turns, FSDP2, async vLLM rollout, Qwen3-Coder multi-turn formatting, GRPO with fixed low-variance KL, eight responses per prompt, and AAM enabled. Override hardware and experiment settings through environment variables or extra Hydra arguments. The integrated [`nanoclaw_recipe/train_half_turn.sh`](verl/nanoclaw_recipe/train_half_turn.sh) remains the lower-level launcher; it contains the historical NPU/ModelArts setup path and can be adapted for a pre-provisioned cluster.
 
-The implementation and integration details are documented in [recipe/README.md](recipe/README.md), the [ClawLoop recipe runbook](recipe/nanoclaw_recipe/README.md), and [patches/README.md](patches/README.md). CPU regression tests cover delayed positive-advantage masking and final-answer bonus behavior.
-
-**Compatibility note.** The Python package and import paths are still named `nanoclaw_recipe` in the code snapshot so existing VERL integrations remain loadable. `ClawLoop` is the formal public project name; these are internal compatibility identifiers only.
+CPU regression tests for masking and final-answer behavior are included in [`verl/tests/recipe/nanoclaw/`](verl/tests/recipe/nanoclaw/). The Python package is located at `verl/nanoclaw_recipe` inside the bundled checkout; the directory name is retained as an internal compatibility identifier while `ClawLoop` is the formal public project name.
 
 ### Inference
 
-The runtime-only path is implemented in [ClawLoop inference](recipe/nanoclaw_recipe/inference.py). It reuses the same task discovery, multi-turn tool loop, workspace isolation, and Qwen3-Coder formatting as training, but does not call the task verifier during rollout. Evaluation can therefore be performed independently after trajectories are collected.
+The runtime-only path is implemented in [ClawLoop inference](verl/nanoclaw_recipe/inference.py). It reuses the same task discovery, multi-turn tool loop, workspace isolation, and Qwen3-Coder formatting as training, but does not call the task verifier during rollout. Evaluation can therefore be performed independently after trajectories are collected.
 
 ## Paper and Figure Gallery
 
@@ -302,11 +322,11 @@ The plot compares success rate with average generated tokens per episode across 
 
 ## Acknowledgement
 
-We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the ClawLoop adapter is built.
+We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the integrated ClawLoop implementation is based.
 
 ## Uploading to the Hub
 
-This directory is the intended upload root. Do not upload the parent workspace, which contains unrelated source exports and experiment files.
+This directory is the intended upload root. It contains the complete modified VERL source tree under `verl/`, in addition to the ClawLoop data and paper artifacts. Do not upload the parent workspace, which contains unrelated source exports and experiment files.
 
 ```bash
 cd /home/hyx/hf_up/nanoclaw_hf
@@ -315,7 +335,7 @@ hf repo create <namespace>/clawloop-tasks --repo-type dataset
 hf upload <namespace>/clawloop-tasks . . --repo-type dataset
 ```
 
-The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub Dataset repository is recommended because the primary artifact is task data; the same directory can also be mirrored as a code repository for the recipe and paper materials.
+The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub Dataset repository is recommended for the task-only mirror; this project snapshot is a code-and-data release whose `verl/` directory can be used directly after installation.
 
 ## Safety and licensing
 
