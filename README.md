@@ -186,43 +186,59 @@ The runtime-only path is implemented in [ClawLoop inference](recipe/nanoclaw_rec
 
 ## Paper and Figure Gallery
 
-The manuscript source and figures are in [paper/](paper/). The compiled manuscript is [paper/clawAgent_main.pdf](paper/clawAgent_main.pdf). The design notes [paper/harness设计.md](paper/harness设计.md) and [paper/mask.md](paper/mask.md) provide a longer explanation of the harness boundary and the masking rationale.
-
-GitHub and Hugging Face do not rasterize linked PDFs inside a README. The PDF files below are nevertheless the paper's actual plots and diagrams; each one is paired with a checked-in PNG preview so the figure is visible directly on the project page, while the original PDF remains available for full-resolution download and printing.
-
-### Architecture overview
+### Figure 1 · ClawLoop rollout architecture
 
 ![ClawLoop architecture](paper/harness_draft.png)
 
-ClawLoop / VERL rollout, isolated workspace, atomic tools, verifier, and policy update. [Original PDF](paper/figure1.pdf)
+The rollout path keeps only the components that affect learning: an isolated per-episode workspace, atomic file/shell tools, multi-turn observations, a terminal-state verifier, and a direct policy update through VERL. Product-layer services such as session management, plugin registries, long-term memory, and multi-agent orchestration are removed from the critical path. This boundary is the source of the reported 8.8× reduction in environment overhead; AAM then filters positive policy-gradient updates on ineffective turns while preserving negative signals.
 
-### Training dynamics
+[Original figure PDF](paper/figure1.pdf)
 
-![GRPO and AAM training dynamics](paper/previews/grpo_three_figures_combined.png)
+### Figure 2 · Token-level Asymmetric Advantage Masking
 
-GRPO versus AAM success rate, ineffective-turn rate, and positive-gradient misassignment. [Original PDF](paper/grpo_three_figures_combined.pdf) · [Alternate export](paper/grpo_three_figures_combined-Copy1.pdf)
+![Asymmetric Advantage Masking](paper/previews/clawAgent_main.png)
 
-![GRPO and AAM training dynamics (alternate export)](paper/previews/grpo_three_figures_combined-Copy1.png)
+This diagram shows the mechanism behind AAM. The environment first marks four deterministic ineffective patterns—internal loops, redundant actions, truncations, and tool errors. The masking decision is then conditioned on the trajectory advantage: ineffective tokens are removed from a positive-advantage update, but remain active when the advantage is negative. Standard GRPO assigns the same trajectory-level signal to both useful and ineffective tokens; AAM breaks that erroneous positive reinforcement without changing the verifier reward or the autoregressive context.
 
-### Environment cost
+[Original method figure PDF](paper/clawAgent_main.pdf)
+
+### Figure 3 · GRPO training collapse and credit misassignment
+
+![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
+
+On Qwen3.5-9B, standard GRPO briefly reaches a high success rate and then collapses. The collapse is accompanied by a sharp rise in ineffective interactions—redundant actions, tool errors, truncations, and internal loops—and by positive-gradient mass being assigned to those ineffective tokens. The paper reports a strong anti-phase relationship between success and ineffective-interaction rate (Pearson ρ = −0.83; Spearman ρ = −0.90), with the misassigned positive-gradient rate reaching approximately 0.20 in the collapse region.
+
+[Original figure PDF](paper/grpo_three_figures_combined.pdf)
+
+![GRPO versus AAM (alternate export)](paper/previews/grpo_three_figures_combined-Copy1.png)
+
+The alternate export overlays AAM and GRPO directly. AAM continues improving after the GRPO collapse point, keeps ineffective interactions low, and holds positive-gradient misassignment near its early-training level. The resulting learning signal is concentrated on actions that advance the task rather than on merely successful but wasteful trajectories.
+
+[Alternate figure PDF](paper/grpo_three_figures_combined-Copy1.pdf)
+
+### Figure 4 · Environment-side cost of in-harness rollouts
 
 ![In-harness environment cost](paper/previews/fig_cost.png)
 
-Per-episode wall-clock decomposition and GPU utilization. [Original PDF](paper/fig_cost.pdf) · [Earlier PNG export](paper/fig_cost2.png)
+In the controlled OpenClaw comparison, environment execution consumes 54.1 s of a 57.5 s in-harness episode (94% of wall-clock time), compared with 2.5 s of environment time in tool-only mode. The full episode is therefore 9.7× slower, while mean GPU utilization falls from 61% to 14%. The result identifies CPU/IO-bound harness work—not model computation—as the dominant throughput bottleneck.
 
-### Training efficiency
+[Original figure PDF](paper/fig_cost.pdf)
+
+### Figure 5 · Training-side efficiency after removing the bottleneck
 
 ![Training efficiency](paper/previews/fig_train_eff.png)
 
-Accuracy and efficiency curves used in the controlled training comparison. [Original PDF](paper/fig_train_eff.pdf)
+With identical training settings, OpenClaw + GRPO takes 67.9 s per episode, ClawLoop + GRPO takes 7.3 s, and ClawLoop + AAM takes 6.9 s. Mean GPU utilization rises from 14% to 33% with the lightweight harness and to 49% when AAM suppresses redundant interactions. The figure shows that ClawLoop supplies the main systems-level speedup, while AAM further removes wasted rollout work.
 
-### Token efficiency
+[Original figure PDF](paper/fig_train_eff.pdf)
+
+### Figure 6 · Inference success versus token consumption
 
 ![Token efficiency](paper/previews/fig_token_sr.png)
 
-Success rate and inference-time token consumption. [Original PDF](paper/fig_token_sr.pdf)
+The plot compares success rate with average generated tokens per episode across model scales. ClawLoop + AAM moves the models toward the more desirable lower-right regime: higher success with fewer tokens than the corresponding base models. At 27B, AAM reaches 66.4% success with 5.7K tokens per episode, approaching GPT-5's 67.2% success while using substantially less generation. This supports the paper's conclusion that better credit assignment improves behavioral efficiency, not only training stability.
 
-The manuscript source is [main.tex](paper/main.tex), with bibliography and AAAI style files included alongside it. The compiled paper is [clawAgent_main.pdf](paper/clawAgent_main.pdf).
+[Original figure PDF](paper/fig_token_sr.pdf)
 
 ## Acknowledgement
 
