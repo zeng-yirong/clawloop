@@ -1,0 +1,29 @@
+{
+  "dataset_name": "Nanoclaw Verifiable Agent RL Tasks",
+  "format": "jsonl",
+  "records": 6970,
+  "source_records": 7056,
+  "skipped_records": 86,
+  "validation": {
+    "strict_export": true,
+    "environment_builder_smoke_test": true,
+    "all_released_records_marked_valid": true
+  },
+  "prompt_languages": {
+    "en_or_other": 4365,
+    "zh_or_mixed": 2605
+  },
+  "manifest_warning_counts": {
+    "verifier_not_referencing_prompt_files": 1870,
+    "verifier_missing_recommended_fragment": 193,
+    "yaml_unusual_entrypoint": 8,
+    "yaml_missing_runtime": 5,
+    "verifier_read_without_errors_replace": 2
+  },
+  "source_layout": {
+    "task_files": ["task.yaml", "prompts.md", "env_builder.py", "workplace_verifier.py", "manifest.json"],
+    "excluded_from_records": ["raw_output.cleaned.txt", "already-created workspaces"]
+  },
+  "notes": "Warning counts are retained from the strict exporter and do not invalidate records. Inspect warnings before using tasks for leaderboard evaluation."
+}
+
