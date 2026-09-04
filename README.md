@@ -25,6 +25,7 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 
 [![Paper](https://img.shields.io/badge/Paper-Manuscript-5f16a8?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](paper/clawAgent_main.pdf)
 [![Dataset](https://img.shields.io/badge/Dataset-6%2C970%20Tasks-4d8cd8?style=for-the-badge&logo=huggingface&logoColor=white)](data/tasks.jsonl)
+[![Hugging Face Dataset](https://img.shields.io/badge/Hugging%20Face-clawLooop%2Fclawloop--data-ffd21e?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
 [![Recipe](https://img.shields.io/badge/Recipe-VERL%20%2B%20AAM-63cad3?style=for-the-badge&logo=pytorch&logoColor=white)](recipe/README.md)
 [![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 </div>
@@ -125,6 +126,14 @@ source_files  canonical filenames used during restoration
 The source export contained 7,056 records. A strict exporter retained 6,970 and rejected 86 because of dangerous path literals, smoke-test failures, or Python syntax errors. Every released record is marked `valid: true` and has a passing environment-builder smoke test. Prompts are multilingual: 4,365 English/other and 2,605 Chinese or mixed-language records.
 
 The dataset contains synthetic workplace scenarios covering data cleaning, coding, documents, finance, operations, and structured file editing. It does not contain model checkpoints, rollout conversations, or private API credentials. See [data/SCHEMA.md](data/SCHEMA.md) and [data/metadata.json](data/metadata.json) for the exact schema and export statistics.
+
+The dataset is also published as a standalone Hugging Face Dataset for browser-based inspection and dataset-native loading: **[clawLooop/clawloop-data](https://huggingface.co/datasets/clawLooop/clawloop-data)**. The Hugging Face mirror contains the same 6,970-task `tasks.jsonl` release and exposes it as the `default` configuration with a `train` split.
+
+```python
+from datasets import load_dataset
+
+tasks = load_dataset("clawLooop/clawloop-data", split="train")
+```
 
 ## Model Use
 
