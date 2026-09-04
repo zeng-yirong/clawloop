@@ -50,35 +50,54 @@ The central premise is simple: an agent should be trained against the **state it
 
 ## The ClawLoop environment
 
-ClawLoop is deliberately smaller than a production agent harness. Its environment is a **verifiable workspace loop**: the policy receives a task prompt, operates on files through constrained tools, and is scored only after the resulting workspace is checked by the task verifier.
+ClawLoop is a **verifiable workspace loop**, not a product-runtime clone. The policy edits an isolated workspace through a small tool surface; only the terminal workspace is passed to the verifier.
 
-```text
-task record
-    │
-    ▼
-lazy per-rollout workspace ──► env_builder.py ──► initial files
-    │                                  ▲
-    │  list/read/write/edit/patch       │ isolated subprocess
-    │  grep/find/mkdir/restricted bash  │
-    ▼                                  │
-multi-turn agent actions ─────────────┘
-    │
-    ▼
-workspace_after ──► workplace verifier ──► score / pass signal
+```mermaid
+flowchart LR
+    A[Task record] --> B[Lazy per-rollout workspace]
+    B --> C[env_builder.py<br/>isolated subprocess]
+    C --> D[Initial files]
+    D --> E[Agent multi-turn loop]
+    E <--> F[Atomic tools<br/>read · write · edit · grep · bash]
+    E --> G[workspace_after]
+    G --> H[workplace_verifier.py]
+    H --> I[score / pass signal]
 ```
 
-### What the source implementation does
+### Rollout lifecycle
 
-- **Discovers tasks without materializing environments early.** `CustomRLHFDataset` and the shared task resolver locate prompts, `env_builder.py`, and the verifier from either the canonical `tasks/data_*` layout or a flat restored task directory. Workspace creation is delayed until the first workspace-tool call, which prevents replicated GRPO samples from sharing state.
-- **Builds one disposable workspace per rollout.** `NanoclawWorkspaceTool` allocates a unique result directory, copies the task bundle for provenance, and runs the task's `env_builder.py` with the workspace as its current directory. An optional `workspace_before` snapshot can be retained; the agent works only in `workspace_after`.
-- **Exposes atomic, inspectable actions.** The default interface contains `list_dir`, `read_file`, `write_file`, `edit_file`, `apply_patch`, `grep`, `find`, `mkdir`, and a restricted `bash` tool. Tool calls return textual observations that are appended to the multi-turn trajectory and are logged as structured events.
-- **Enforces workspace boundaries.** Paths must be relative, cannot contain `..`, and are resolved again before access. The shell validator checks command names and path operands, rejects background processes, command substitution, unsupported redirections, and dangerous Python patterns, and truncates oversized output. Product-style memory calls are explicitly disabled in this local runner.
-- **Separates acting from judging.** The agent never receives verifier execution as a tool action. After generation terminates, `compute_score` runs `workplace_verifier.py` in a fresh subprocess with a configurable timeout (120 s for environment setup by default; 300 s for verification), reads `workplace_score.json`, and converts `score/max_score` to the reward used by GRPO. The verifier can be missing or fail without corrupting other rollouts.
-- **Cleans up by default.** Temporary workspaces and copied task bundles are removed after scoring unless debugging options request preservation. Runtime metadata records the task, workspace, builder/verifier paths, timing, tool-call count, and cleanup state, making failures auditable without adding product-harness state to the learning loop.
+| Stage | Source-level behavior | Learning boundary |
+| --- | --- | --- |
+| 1 · Discover | `CustomRLHFDataset` resolves prompt, builder, and verifier from legacy or flat task layouts. | No workspace is created while dataset rows are replicated for GRPO. |
+| 2 · Initialize | `NanoclawWorkspaceTool` creates a unique result directory and runs `env_builder.py` in it. | Each sampled trajectory receives independent state. |
+| 3 · Act | The model performs multi-turn tool calls; observations are appended to the trajectory and logged in `tool_events.jsonl`. | Only assistant-generated tokens receive policy-gradient updates. |
+| 4 · Verify | `compute_score` runs `workplace_verifier.py` after generation and reads `workplace_score.json`. | Reward is derived from terminal state, not final prose or a fixed action trace. |
+| 5 · Finalize | Runtime metadata is written; temporary files are removed by default. | Failed rollouts do not contaminate other samples. |
 
-The result is a narrow environment contract: **task specification → isolated state → atomic actions → terminal verification**. Session management, plugin registries, long-term memory, external services, authentication layers, and multi-agent orchestration are intentionally outside this contract. Removing those components is what makes environment execution cheap enough for batched rollout, while the verifier still evaluates the concrete state produced by the policy.
+### Tool surface and safety boundary
 
-The implementation anchors are [`nanoclaw.py`](recipe/nanoclaw_recipe/nanoclaw.py) for the VERL tool and reward boundary, [`common.py`](recipe/nanoclaw_recipe/common.py) for task discovery and bundle handling, [`runtime/tools.py`](recipe/nanoclaw_recipe/runtime/tools.py) for path and command guards, and [`runtime/runner.py`](recipe/nanoclaw_recipe/runtime/runner.py) for the standalone rollout lifecycle.
+| Tool group | Operations | Guardrail |
+| --- | --- | --- |
+| Inspect | `list_dir`, `read_file`, `grep`, `find` | Relative paths only; bounded output. |
+| Modify | `write_file`, `edit_file`, `apply_patch`, `mkdir` | Writes resolve inside the workspace; parent traversal (`..`) is rejected. |
+| Compute | Restricted `bash` (`python`, `grep`, `awk`, `sed`, `sort`, etc.) | Allowlisted commands; no background jobs, command substitution, unsupported redirection, or dangerous Python patterns. |
+| Judge | `workplace_verifier.py` (not exposed as an agent tool) | Separate subprocess, isolated `HOME`/`TMPDIR`, configurable timeout (300 s by default). |
+
+The environment setup subprocess has a 120 s default timeout. Verifier and builder outputs are captured, score files are checked in both the workspace and verifier directory, and missing or failed verifiers receive an explicit fallback status. Memory operations are disabled in the local runner.
+
+### What “lightweight” removes
+
+| Kept in the learning loop | Removed from the critical path |
+| --- | --- |
+| Task prompt and files | Session management |
+| Isolated workspace snapshots | Plugin registry |
+| Atomic file/shell tools | Long-term memory |
+| Multi-turn observations | External service orchestration |
+| Terminal-state verifier | Authentication and multi-agent coordination |
+
+This narrow contract—**task specification → isolated state → atomic actions → terminal verification**—is the systems reason ClawLoop reduces environment overhead while preserving inspectable, state-based rewards.
+
+Implementation anchors: [`nanoclaw.py`](recipe/nanoclaw_recipe/nanoclaw.py) (VERL tool and reward boundary), [`common.py`](recipe/nanoclaw_recipe/common.py) (task discovery and bundle handling), [`runtime/tools.py`](recipe/nanoclaw_recipe/runtime/tools.py) (path and command guards), and [`runtime/runner.py`](recipe/nanoclaw_recipe/runtime/runner.py) (standalone rollout lifecycle).
 
 ## What the paper studies
 
