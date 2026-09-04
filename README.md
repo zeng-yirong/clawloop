@@ -35,7 +35,7 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 
 - [2026/09] We release the ClawLoop task corpus, ClawLoop recipe, AAM integration, paper artifacts, and portable Qwen3.5-9B/27B launch profiles.
 - [2026/09] The JSONL release contains 6,970 tasks that passed strict export validation and environment-builder smoke tests.
-- [2026/09] The README includes the full-resolution PDF figure gallery used in the manuscript.
+- [2026/09] The README includes directly rendered PNG previews, with the full-resolution PDF figures preserved beside them.
 
 ## Less Harness, More Signal
 
@@ -188,18 +188,41 @@ The runtime-only path is implemented in [ClawLoop inference](recipe/nanoclaw_rec
 
 The manuscript source and figures are in [paper/](paper/). The compiled manuscript is [paper/clawAgent_main.pdf](paper/clawAgent_main.pdf). The design notes [paper/harness设计.md](paper/harness设计.md) and [paper/mask.md](paper/mask.md) provide a longer explanation of the harness boundary and the masking rationale.
 
-The PDF files below are not supplementary documents; they are the paper's actual plots and diagrams. They are kept at full resolution for download, printing, and camera-ready inspection. Hugging Face's file viewer can open each PDF directly from the table.
+GitHub and Hugging Face do not rasterize linked PDFs inside a README. The PDF files below are nevertheless the paper's actual plots and diagrams; each one is paired with a checked-in PNG preview so the figure is visible directly on the project page, while the original PDF remains available for full-resolution download and printing.
 
-| Artifact | Role in the paper | File |
-| --- | --- | --- |
-| Architecture overview | ClawLoop / VERL rollout, isolated workspace, atomic tools, verifier, and policy update | [figure1.pdf](paper/figure1.pdf) |
-| Training dynamics | GRPO versus AAM success rate, ineffective-turn rate, and positive-gradient misassignment | [grpo_three_figures_combined.pdf](paper/grpo_three_figures_combined.pdf) |
-| Training dynamics variant | Alternate exported version of the same three-panel analysis | [grpo_three_figures_combined-Copy1.pdf](paper/grpo_three_figures_combined-Copy1.pdf) |
-| Environment cost | Per-episode wall-clock decomposition and GPU utilization | [fig_cost.pdf](paper/fig_cost.pdf) · [PNG preview](paper/fig_cost2.png) |
-| Training efficiency | Accuracy/efficiency curves used in the controlled training comparison | [fig_train_eff.pdf](paper/fig_train_eff.pdf) |
-| Token efficiency | Success rate and inference-time token consumption | [fig_token_sr.pdf](paper/fig_token_sr.pdf) |
+### Architecture overview
 
-The two PNG files are lightweight previews used for inline rendering above. The corresponding PDFs remain the authoritative figure assets. The manuscript source is [main.tex](paper/main.tex), with bibliography and AAAI style files included alongside it.
+![ClawLoop architecture](paper/harness_draft.png)
+
+ClawLoop / VERL rollout, isolated workspace, atomic tools, verifier, and policy update. [Original PDF](paper/figure1.pdf)
+
+### Training dynamics
+
+![GRPO and AAM training dynamics](paper/previews/grpo_three_figures_combined.png)
+
+GRPO versus AAM success rate, ineffective-turn rate, and positive-gradient misassignment. [Original PDF](paper/grpo_three_figures_combined.pdf) · [Alternate export](paper/grpo_three_figures_combined-Copy1.pdf)
+
+![GRPO and AAM training dynamics (alternate export)](paper/previews/grpo_three_figures_combined-Copy1.png)
+
+### Environment cost
+
+![In-harness environment cost](paper/previews/fig_cost.png)
+
+Per-episode wall-clock decomposition and GPU utilization. [Original PDF](paper/fig_cost.pdf) · [Earlier PNG export](paper/fig_cost2.png)
+
+### Training efficiency
+
+![Training efficiency](paper/previews/fig_train_eff.png)
+
+Accuracy and efficiency curves used in the controlled training comparison. [Original PDF](paper/fig_train_eff.pdf)
+
+### Token efficiency
+
+![Token efficiency](paper/previews/fig_token_sr.png)
+
+Success rate and inference-time token consumption. [Original PDF](paper/fig_token_sr.pdf)
+
+The manuscript source is [main.tex](paper/main.tex), with bibliography and AAAI style files included alongside it. The compiled paper is [clawAgent_main.pdf](paper/clawAgent_main.pdf).
 
 ## Acknowledgement
 
