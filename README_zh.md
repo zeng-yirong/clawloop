@@ -1,19 +1,4 @@
----
-license: mit
-language:
-  - zh
-  - en
-task_categories:
-  - reinforcement-learning
-  - text-generation
-tags:
-  - clawloop
-  - agentic-rl
-  - tool-use
-  - grpo
-  - aam
-pretty_name: ClawLoop 可验证智能体强化学习任务集
----
+
 
 <div align="center">
 <h1>ClawLoop：更少 Harness，更强学习信号</h1>
