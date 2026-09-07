@@ -189,7 +189,7 @@ The figures below are taken directly from the paper and are included here with c
 
 #### Figure 1 — ClawLoop architecture
 
-![ClawLoop architecture](paper/clawAgent_main.pdf)
+![ClawLoop architecture and AAM](paper/previews/clawAgent_main.png)
 
 The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
 
