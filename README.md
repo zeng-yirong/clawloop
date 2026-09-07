@@ -24,6 +24,7 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 <h2>Verifiable Reinforcement Learning for Long-Horizon Tool-Using Agents</h2>
 
 [![Paper](https://img.shields.io/badge/Paper-Manuscript-5f16a8?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](paper/clawAgent_main.pdf)
+[![中文 README](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87-ef9a9a?style=for-the-badge)](README_zh.md)
 [![Dataset](https://img.shields.io/badge/Dataset-6%2C970%20Tasks-4d8cd8?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
 [![Integrated VERL](https://img.shields.io/badge/Code-Integrated%20VERL%20%2B%20AAM-63cad3?style=for-the-badge&logo=pytorch&logoColor=white)](verl/)
 [![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
