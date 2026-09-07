@@ -24,174 +24,304 @@ pretty_name: ClawLoop Verifiable Agent RL Tasks
 <h2>Verifiable Reinforcement Learning for Long-Horizon Tool-Using Agents</h2>
 
 [![Paper](https://img.shields.io/badge/Paper-Manuscript-5f16a8?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](paper/clawAgent_main.pdf)
-[![Dataset](https://img.shields.io/badge/Dataset-6%2C970%20Tasks-4d8cd8?style=for-the-badge&logo=huggingface&logoColor=white)](data/tasks.jsonl)
-[![Hugging Face Dataset](https://img.shields.io/badge/Hugging%20Face-clawLooop%2Fclawloop--data-ffd21e?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
+[![Dataset](https://img.shields.io/badge/Dataset-6%2C970%20Tasks-4d8cd8?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
 [![Integrated VERL](https://img.shields.io/badge/Code-Integrated%20VERL%20%2B%20AAM-63cad3?style=for-the-badge&logo=pytorch&logoColor=white)](verl/)
 [![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 </div>
 
 <br>
 
-**News!!!**
+## 1. Overview
 
-- [2026/09] We release the ClawLoop task corpus, paper artifacts, and the complete modified VERL source tree with ClawLoop and AAM integrated in place.
-- [2026/09] The JSONL release contains 6,970 tasks that passed strict export validation and environment-builder smoke tests.
-- [2026/09] The README includes directly rendered PNG previews, with the full-resolution PDF figures preserved beside them.
+ClawLoop is a lightweight, verifiable reinforcement-learning framework for long-horizon agents that solve tasks by reading and modifying files through tools. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and releases the complete modified VERL source tree, the 6,970-task corpus, the paper artifacts, and the training launchers in one repository.
 
-## Less Harness, More Signal
+The design follows one narrow learning contract:
 
-ClawLoop is a research release for **verifiable reinforcement learning of long-horizon, tool-using agents**. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and packages the task corpus, the complete modified VERL implementation, AAM, and reproducibility materials in one project.
+```text
+task specification → isolated workspace → atomic actions
+        ↑                                      ↓
+terminal verifier ← multi-turn observations and actions
+```
 
-The central premise is simple: an agent should be trained against the **state it creates**, not against a single prescribed tool trajectory. Every rollout therefore runs in an isolated workspace, uses a small set of general file and shell tools, and receives reward from a verifier that inspects the terminal workspace. Search order, edits, retries, and recovery remain open to the policy.
+The policy is rewarded for the terminal state it creates rather than for reproducing a prescribed tool trajectory. Each rollout receives its own workspace, interacts through a small guarded tool surface, and is scored by a verifier after the episode. Product-layer services that do not improve the policy signal—session management, plugin registries, long-term memory, and external orchestration—are outside the critical path.
 
-![ClawLoop execution loop](paper/harness_draft.png)
+The release also integrates **Asymmetric Advantage Masking (AAM)** into VERL. AAM detects deterministic ineffective turns and removes their *positive* policy-gradient contribution while preserving their negative learning signal. Together, ClawLoop and AAM address the two bottlenecks identified in the paper:
 
-*ClawLoop keeps the task, isolated workspace, atomic tools, multi-turn interaction, and terminal verifier in the policy-gradient loop while removing product-layer state such as session management, plugin registries, and long-term memory.*
+| Bottleneck | Observation | Release-level response |
+| --- | --- | --- |
+| Environment overhead | CPU/IO-bound product harness work leaves the accelerator idle. | ClawLoop keeps only workspace construction, atomic tools, observations, and terminal verification. |
+| Credit misassignment | GRPO broadcasts one trajectory-level advantage to useful and ineffective tokens alike. | AAM applies a token-level, advantage-asymmetric actor mask. |
 
-## Release layout
+The dataset is available directly on the Hugging Face Hub: **[clawLooop/clawloop-data](https://huggingface.co/datasets/clawLooop/clawloop-data)**. The repository mirror contains the same JSONL release through Git LFS.
 
-This project is distributed as a single, runnable source tree. The `verl/` directory is the complete modified VERL checkout; ClawLoop integration is already applied inside it.
+## 2. Contents
 
-| Path | Contents |
+| Section | What to find here |
 | --- | --- |
-| [`verl/`](verl/) | Full VERL framework plus integrated ClawLoop environment, agent loop, reward path, AAM support, tests, and launchers. |
-| [`data/`](data/) | Validated task corpus and export metadata. |
-| [`scripts/`](scripts/) | Dataset restoration, conversion, and validation utilities. |
-| [`paper/`](paper/) | Manuscript, figures, and directly rendered previews. |
+| [1. Overview](#1-overview) | Research goal, central idea, and headline findings. |
+| [2. Contents](#2-contents) | This repository guide. |
+| [3. Project structure](#3-project-structure) | The GitHub tree and the role of each directory. |
+| [4. Main components](#4-main-components) | The ClawLoop framework and the AAM method. |
+| [5. Training process and figure record](#5-training-process-and-figure-record) | Rollout/training lifecycle and all directly rendered paper figures. |
+| [6. Results](#6-results) | In-domain, out-of-domain, ablation, systems, and inference results. |
+| [Reproduction](#reproduction) | Dataset preparation, installation, and 9B/27B launch commands. |
+| [Safety and licensing](#safety-and-licensing) | Execution boundary, upstream licenses, and artifact notices. |
 
-There is no separate `patches/` directory to apply and no external `recipe/` checkout to install. Install and run the framework directly from `verl/`.
+## 3. Project structure
 
-## The ClawLoop environment
+The repository is intentionally self-contained. `verl/` is not a patch bundle or a recipe submodule: it is the complete modified VERL checkout with ClawLoop and AAM already integrated.
 
-ClawLoop is a **verifiable workspace loop**, not a product-runtime clone. The policy edits an isolated workspace through a small tool surface; only the terminal workspace is passed to the verifier.
+```text
+clawloop/
+├── README.md                         # This project guide
+├── LICENSE                           # ClawLoop release license
+├── THIRD_PARTY_NOTICES.md            # VERL, AAAI, and benchmark notices
+├── .gitattributes                    # Git LFS rule for the JSONL corpus
+├── requirements-data.txt             # Lightweight data-validation dependencies
+├── data/
+│   ├── tasks.jsonl                   # 6,970 validated task records (Git LFS)
+│   ├── metadata.json                 # Export counts and validation metadata
+│   ├── SCHEMA.md                     # Record schema and restoration contract
+│   ├── tasks.part1.rar               # Original task archive part 1
+│   └── tasks.part2.rar               # Original task archive part 2
+├── paper/
+│   ├── clawAgent_main.pdf            # Manuscript PDF
+│   ├── figure1.pdf                   # Architecture figure
+│   ├── grpo_three_figures_combined.pdf
+│   ├── fig_cost.pdf                  # Environment/training cost figure
+│   ├── fig_train_eff.pdf             # Training efficiency figure
+│   ├── fig_token_sr.pdf              # Success/token-efficiency figure
+│   ├── previews/                     # PNG previews for GitHub rendering
+│   ├── main.tex, appdx.tex           # Manuscript sources
+│   └── *.bib, *.bst, *.sty           # Bibliography and style files
+├── scripts/
+│   ├── validate_release.py           # Static release validation
+│   ├── restore_hf_dataset.py         # JSONL → runnable task layout
+│   └── prepare_hf_dataset.py         # Task layout → JSONL export
+└── verl/                             # Complete modified VERL source tree
+    ├── verl/                         # Trainer, rollout, agent-loop integration
+    ├── nanoclaw_recipe/              # ClawLoop runtime, tools, AAM, launchers
+    ├── tests/recipe/nanoclaw/        # Regression tests for the integration
+    ├── examples/ and docs/           # Upstream VERL examples and documentation
+    ├── nanoclaw_recipe/train_9b.sh   # Qwen3.5-9B reference launch
+    └── nanoclaw_recipe/train_27b.sh  # Qwen3.5-27B reference launch
+```
+
+The internal package directory retains the historical `nanoclaw_recipe` name for compatibility with the integrated code. **ClawLoop** is the formal public project name; no separate `patches/` or external `recipe/` directory is required.
+
+## 4. Main components
+
+### 4.1 ClawLoop framework
+
+ClawLoop is a training-oriented workspace harness. A task record supplies a prompt, an environment builder, and a verifier. The builder creates the initial files in a disposable per-rollout workspace; the agent then explores and edits that workspace through guarded tools; the verifier inspects the final state and emits the reward.
+
+| Component | Role in a rollout | Source anchor |
+| --- | --- | --- |
+| Task bundle | Resolves prompts, builders, verifiers, manifests, and flat/legacy layouts. | [`common.py`](verl/nanoclaw_recipe/common.py) |
+| Workspace initializer | Creates a unique workspace and runs the builder in an isolated subprocess. | [`nanoclaw.py`](verl/nanoclaw_recipe/nanoclaw.py) |
+| Atomic tools | Lists, reads, searches, writes, edits, creates directories, and runs restricted shell commands. | [`runtime/tools.py`](verl/nanoclaw_recipe/runtime/tools.py) |
+| Multi-turn agent loop | Interleaves model reasoning, tool calls, observations, and response masks. | [`nanoclaw_support.py`](verl/verl/experimental/agent_loop/nanoclaw_support.py) |
+| Terminal verifier | Scores the resulting workspace after generation; it is not exposed as an agent action. | `workplace_verifier.py` in each task bundle |
+| VERL trainer path | Batches rollouts, computes GRPO advantages, applies the actor loss mask, and updates the policy. | [`ray_trainer.py`](verl/verl/trainer/ppo/ray_trainer.py) |
+
+The safety boundary is explicit:
+
+| Tool group | Operations | Runtime guard |
+| --- | --- | --- |
+| Inspect | `list_dir`, `read_file`, `grep`, `find` | Relative paths and bounded output. |
+| Modify | `write_file`, `edit_file`, `apply_patch`, `mkdir` | Workspace-only resolution; parent traversal is rejected. |
+| Compute | Restricted `bash` with allowlisted utilities | No background jobs, command substitution, unsupported redirection, or dangerous Python patterns. |
+| Judge | `workplace_verifier.py` | Separate subprocess with isolated `HOME`/`TMPDIR` and a configurable timeout. |
+
+The environment builder has a 120-second default timeout; verifier execution has a 300-second default timeout. Builder and verifier output is captured, score files are checked in the expected locations, and failed or missing verifiers receive an explicit fallback status. Memory operations and product-runtime state are not part of the local learning loop.
+
+### 4.2 Asymmetric Advantage Masking (AAM)
+
+In standard GRPO, all policy-generated tokens in a sampled trajectory inherit the same standardized group advantage. A successful episode can therefore reinforce a useful edit together with redundant reads, repeated tool results, error calls, internal loops, or a truncated final response.
+
+AAM records candidate ineffective spans during rollout and applies the advantage condition after GRPO computes the trajectory advantage. With `m_base` as the ordinary response mask, `B` as the detected bad-turn spans, and `A_t` as the trajectory advantage:
+
+```text
+m_t = m_base_t × [1 − 1(t ∈ B and A_t > 0)]
+```
+
+| Advantage | Ineffective token | AAM behavior |
+| --- | --- | --- |
+| Positive | Yes | Mask its positive actor-gradient contribution. |
+| Negative | Yes | Keep it active so the policy learns to avoid the behavior. |
+| Either | No | Keep the ordinary response mask unchanged. |
+| Either | Verifier/reward | Never alter the terminal reward or the rollout context. |
+
+The current detector covers four deterministic patterns: looping responses, duplicate tool-result turns, error tool results, and a final assistant turn cut off by the response budget. This asymmetry matters: the paper's ablation shows that symmetric masking loses 6.30 success-rate points and random masking loses 5.50 points relative to full AAM.
+
+## 5. Training process and figure record
+
+### 5.1 End-to-end training lifecycle
 
 ```mermaid
 flowchart LR
-    A[Task record] --> B[Lazy per-rollout workspace]
-    B --> C[env_builder.py<br/>isolated subprocess]
-    C --> D[Initial files]
-    D --> E[Agent multi-turn loop]
-    E <--> F[Atomic tools<br/>read · write · edit · grep · bash]
-    E --> G[workspace_after]
-    G --> H[workplace_verifier.py]
-    H --> I[score / pass signal]
+    A[Task JSONL] --> B[Dataset resolver]
+    B --> C[Per-rollout workspace]
+    C --> D[env_builder.py]
+    D --> E[Initial files]
+    E --> F[Qwen3.5 multi-turn policy]
+    F <--> G[Guarded atomic tools]
+    G --> H[Workspace after rollout]
+    H --> I[workplace_verifier.py]
+    I --> J[Terminal reward]
+    J --> K[GRPO group advantage]
+    K --> L[AAM token mask]
+    L --> M[VERL actor update]
+    M --> F
 ```
 
-### Rollout lifecycle
-
-| Stage | Source-level behavior | Learning boundary |
+| Stage | What happens | What is learned |
 | --- | --- | --- |
-| 1 · Discover | `CustomRLHFDataset` resolves prompt, builder, and verifier from legacy or flat task layouts. | No workspace is created while dataset rows are replicated for GRPO. |
-| 2 · Initialize | `NanoclawWorkspaceTool` creates a unique result directory and runs `env_builder.py` in it. | Each sampled trajectory receives independent state. |
-| 3 · Act | The model performs multi-turn tool calls; observations are appended to the trajectory and logged in `tool_events.jsonl`. | Only assistant-generated tokens receive policy-gradient updates. |
-| 4 · Verify | `compute_score` runs `workplace_verifier.py` after generation and reads `workplace_score.json`. | Reward is derived from terminal state, not final prose or a fixed action trace. |
-| 5 · Finalize | Runtime metadata is written; temporary files are removed by default. | Failed rollouts do not contaminate other samples. |
+| 1. Discover | `CustomRLHFDataset` loads the prompt and task bundle; rows can be replicated for a GRPO group without creating workspaces. | No environment side effect. |
+| 2. Initialize | `NanoclawWorkspaceTool` creates a unique directory and runs `env_builder.py`. | Independent state for every sampled trajectory. |
+| 3. Act | The policy alternates assistant turns and tool observations for up to the configured turn/token budget. | Candidate ineffective spans and assistant-token masks are recorded. |
+| 4. Verify | `compute_score` runs the terminal verifier and reads the score artifact. | Reward reflects the final workspace, not a fixed action trace or final prose. |
+| 5. Update | VERL forms the group advantage; AAM suppresses only positive credit on detected bad spans. | Useful edits are reinforced while negative feedback remains available. |
 
-### Tool surface and safety boundary
+### 5.2 Training figures
 
-| Tool group | Operations | Guardrail |
-| --- | --- | --- |
-| Inspect | `list_dir`, `read_file`, `grep`, `find` | Relative paths only; bounded output. |
-| Modify | `write_file`, `edit_file`, `apply_patch`, `mkdir` | Writes resolve inside the workspace; parent traversal (`..`) is rejected. |
-| Compute | Restricted `bash` (`python`, `grep`, `awk`, `sed`, `sort`, etc.) | Allowlisted commands; no background jobs, command substitution, unsupported redirection, or dangerous Python patterns. |
-| Judge | `workplace_verifier.py` (not exposed as an agent tool) | Separate subprocess, isolated `HOME`/`TMPDIR`, configurable timeout (300 s by default). |
+The PNGs below are checked-in previews so that GitHub renders the figures directly. Each caption describes the paper's claim; the adjacent PDF is the authoritative full-resolution asset.
 
-The environment setup subprocess has a 120 s default timeout. Verifier and builder outputs are captured, score files are checked in both the workspace and verifier directory, and missing or failed verifiers receive an explicit fallback status. Memory operations are disabled in the local runner.
+#### Figure 1 — ClawLoop architecture
 
-### What “lightweight” removes
+![ClawLoop architecture](paper/previews/figure1.png)
 
-| Kept in the learning loop | Removed from the critical path |
-| --- | --- |
-| Task prompt and files | Session management |
-| Isolated workspace snapshots | Plugin registry |
-| Atomic file/shell tools | Long-term memory |
-| Multi-turn observations | External service orchestration |
-| Terminal-state verifier | Authentication and multi-agent coordination |
+The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
 
-This narrow contract—**task specification → isolated state → atomic actions → terminal verification**—is the systems reason ClawLoop reduces environment overhead while preserving inspectable, state-based rewards.
+[Full-resolution figure PDF](paper/figure1.pdf)
 
-Implementation anchors live inside the integrated VERL tree: [`nanoclaw.py`](verl/nanoclaw_recipe/nanoclaw.py) (VERL tool and reward boundary), [`common.py`](verl/nanoclaw_recipe/common.py) (task discovery and bundle handling), [`runtime/tools.py`](verl/nanoclaw_recipe/runtime/tools.py) (path and command guards), [`nanoclaw_support.py`](verl/verl/experimental/agent_loop/nanoclaw_support.py) (agent-loop integration), and [`ray_trainer.py`](verl/verl/trainer/ppo/ray_trainer.py) (trainer integration).
+#### Figure 2 — GRPO training dynamics and credit misassignment
 
-## What the paper studies
+![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
 
-In-harness RL exposes two coupled failure modes:
+On Qwen3.5-9B, standard GRPO first improves and then collapses. The collapse tracks a rise in ineffective interactions and positive-gradient mass assigned to them: the paper reports the misassignment signal increasing from approximately 0.04 early in training to approximately 0.20 after the success peak. Success and ineffective-interaction rate are strongly anti-correlated (Pearson ρ = −0.83; Spearman ρ = −0.90).
 
-1. **Environment overhead.** In a controlled comparison on the same task, a full product harness spends 54.1 seconds per episode in environment execution, versus 2.5 seconds for a tool-only baseline. The resulting 57.5-second episode is 9.7x slower, and mean GPU utilization falls from 81% to 14% while the system waits on CPU/IO-bound interactions.
-2. **Credit misassignment.** GRPO broadcasts a trajectory-level advantage to every generated token. A successful rollout can therefore reinforce redundant reads, repeated tool results, error calls, or a truncated final turn together with the useful edit that actually solved the task. The paper measures the positive-gradient mass on ineffective interactions increasing from 0.04 early in training to 0.20 after the success peak, followed by training collapse.
+[Full-resolution figure PDF](paper/grpo_three_figures_combined.pdf) · [Alternate export](paper/previews/grpo_three_figures_combined-Copy1.png)
 
-![In-harness cost](paper/fig_cost2.png)
+#### Figure 3 — Environment and training efficiency
 
-*The released figure reports the paper's wall-clock and utilization comparison: environment execution dominates the full harness, while the accelerator is underutilized.*
+![Environment cost](paper/previews/fig_cost.png)
 
-**Artifact consistency note.** The included `fig_cost2.png` labels the tool-only bar as 81% GPU utilization, while an earlier paragraph in `paper/main.tex` states 61%. The source materials should be reconciled before using either number in a camera-ready release; the 14% in-harness value is consistent across the figure and manuscript.
+The controlled comparison isolates the systems bottleneck. Product-harness GRPO spends 64.5 seconds per episode in environment execution, while ClawLoop reduces this to 7.3 seconds; adding AAM reduces it further to 6.9 seconds by suppressing wasteful turns. Mean GPU utilization rises from 14% to 33% with ClawLoop + GRPO and to 49% with ClawLoop + AAM.
 
-## The ClawLoop approach
+[Environment-cost PDF](paper/fig_cost.pdf) · [Training-efficiency PDF](paper/fig_train_eff.pdf)
 
-### ClawLoop
+![Training efficiency](paper/previews/fig_train_eff.png)
 
-ClawLoop is a training-oriented, white-box harness reconstructed around five explicit elements:
+#### Figure 4 — Inference success versus token consumption
 
-```text
-task specification -> isolated workspace -> atomic tools
-        ^                                  |
-        |                                  v
- terminal verifier <- multi-turn observations and actions
-```
+![Token efficiency](paper/previews/fig_token_sr.png)
 
-The runtime exposes structured rollout metadata and token spans directly to VERL. Product concerns that do not contribute to policy learning are outside the critical path. In the paper's controlled measurements, this design reduces environment overhead by 8.8x and raises GPU utilization from 14% to 49%.
+The inference plot measures whether the training improvement also changes behavior at test time. AAM-trained models move toward higher success with fewer generated tokens. At 27B, the paper reports 66.4% success with 5.7K tokens per episode, close to the 67.2% success reported for GPT-5 while using substantially fewer generated tokens.
 
-### Asymmetric Advantage Masking (AAM)
+[Full-resolution figure PDF](paper/fig_token_sr.pdf)
 
-Let `m_base` be the ordinary response mask, `B` the token spans belonging to deterministic bad-turn rules, and `A_t` the GRPO advantage. AAM uses:
+#### Figure 5 — Manuscript and supplementary visual record
 
-```text
-m_t = m_base_t * [1 - 1(t in B and A_t > 0)]
-```
+![Manuscript preview](paper/previews/clawAgent_main.png)
 
-This asymmetric condition is the key design choice:
+The repository also includes the manuscript preview and every source figure used in the paper: [`paper/`](paper/), including `fig_cost2.png`, both GRPO exports, the harness draft, and the PNG preview directory. The PDFs remain available for printing and camera-ready inspection.
 
-| Situation | Update behavior |
-| --- | --- |
-| Ineffective turn in a positive-advantage rollout | Remove its positive policy-gradient contribution. |
-| Ineffective turn in a negative-advantage rollout | Keep the token active so the policy learns to avoid it. |
-| Verifier reward and rollout context | Leave unchanged; only the actor loss mask is modified. |
+## 6. Results
 
-The four candidate detectors are looping responses, duplicate tool-result turns, error tool results, and the final assistant turn cut off by the response budget. Candidate spans are recorded during rollout; the positive-advantage decision is applied after GRPO computes advantages.
+All benchmark values below are transcribed from the manuscript tables. Unless noted otherwise, they are success rates in percent, reported as mean ± standard deviation over three random seeds. `Base` is the untuned Qwen3.5 model, `+ GRPO` is standard GRPO on ClawLoop, and `+ AAM (ours)` is the proposed training method.
 
-## Results
+### 6.1 In-domain Claw-style benchmarks
 
-Across five benchmarks (PinchBench, ClawEval, ClawBenchPro, BFCL-v3, and `tau^2`-bench) and model scales from 2B to 27B, the paper reports:
+These benchmarks share the workspace-and-tool interaction format used during training. AAM improves over standard GRPO on every reported Qwen3.5-9B benchmark and at every listed scale.
 
-| Metric | Result in the controlled experiments |
-| --- | --- |
-| ClawLoop environment overhead | 8.8x reduction |
-| GPU utilization | 14% -> 49% |
-| Qwen3.5-9B AAM vs. standard GRPO | +5.1 success-rate points |
-| Qwen3.5-9B AAM vs. base model | +7.8 success-rate points |
-| Inference token consumption | 32% lower with competitive accuracy |
-| 27B in-domain performance | Matches the reported frontier proprietary reference |
+| Method | PinchBench | ClawEval | ClawBenchPro |
+| --- | ---: | ---: | ---: |
+| Kimi-2.5 | 54.60 | 66.60 | 73.00 |
+| Claude-4.6-Opus | 69.90 | 80.60 | 92.30 |
+| GPT-5.4 | 75.70 | 78.30 | 93.70 |
+| MiniMax-m2.7 | 65.40 | 71.80 | 78.20 |
+| Nemotron3Super | 42.20 | 41.70 | 46.50 |
+| Qwen3.5-9B Base | 49.40 ± 0.4 | 65.20 ± 0.3 | 88.00 ± 0.2 |
+| Qwen3.5-9B + GRPO | 52.10 ± 0.3 | 67.50 ± 0.5 | 90.10 ± 0.2 |
+| **Qwen3.5-9B + AAM (ours)** | **57.20 ± 0.2** | **71.60 ± 0.4** | **93.60 ± 0.1** |
 
-These numbers depend on the model checkpoints, hardware, seeds, verifier setup, and benchmark splits used in the manuscript. The task release makes the environment and scoring boundary inspectable; it is not a claim that the JSONL file alone reproduces every table.
+The 9B AAM gain over standard GRPO is +5.10 on PinchBench, +4.10 on ClawEval, and +3.50 on ClawBenchPro. The paper emphasizes that the largest gains occur on longer, more compositional episodes where ineffective turns have more opportunities to receive accidental positive credit.
 
-## Datasets
+#### Scale comparison with AAM
 
-`data/tasks.jsonl` contains **6,970 validated tasks** in portable JSONL form. Each record stores:
+| Model / method | PinchBench | ClawEval | ClawBenchPro |
+| --- | ---: | ---: | ---: |
+| Qwen3.5-2B | 26.80 ± 0.5 | 29.10 ± 0.6 | 63.70 ± 0.4 |
+| Qwen3.5-2B + AAM | **41.80 ± 0.3** | **50.40 ± 0.4** | **73.70 ± 0.3** |
+| Qwen3.5-4B | 37.10 ± 0.4 | 58.90 ± 0.3 | 87.60 ± 0.3 |
+| Qwen3.5-4B + AAM | **50.80 ± 0.2** | **72.40 ± 0.3** | **91.10 ± 0.2** |
+| Qwen3.5-27B | 52.04 ± 0.3 | 72.30 ± 0.2 | 93.60 ± 0.1 |
+| Qwen3.5-27B + AAM | **57.54 ± 0.2** | **75.80 ± 0.3** | **95.80 ± 0.1** |
 
-```text
-task_id       stable export identifier
-prompt        natural-language task instruction
-task_yaml     runtime metadata
-env_builder   source for constructing the initial workspace
-verifier      source for terminal-state scoring
-manifest      exporter status, smoke-test result, warnings, and fixes
-source_files  canonical filenames used during restoration
-```
+At 27B, AAM reaches 95.80% on ClawBenchPro, above the reported GPT-5.4 value of 93.70% on that benchmark. This is a result for the specified evaluation protocol and should not be interpreted as a universal ranking across harnesses.
 
-The source export contained 7,056 records. A strict exporter retained 6,970 and rejected 86 because of dangerous path literals, smoke-test failures, or Python syntax errors. Every released record is marked `valid: true` and has a passing environment-builder smoke test. Prompts are multilingual: 4,365 English/other and 2,605 Chinese or mixed-language records.
+### 6.2 Out-of-domain tool-use benchmarks
 
-The dataset contains synthetic workplace scenarios covering data cleaning, coding, documents, finance, operations, and structured file editing. It does not contain model checkpoints, rollout conversations, or private API credentials. See [data/SCHEMA.md](data/SCHEMA.md) and [data/metadata.json](data/metadata.json) for the exact schema and export statistics.
+BFCL-v3 and τ²-bench use different tool schemas and dialogue protocols, and no tasks from either benchmark are included in the released training corpus. The transfer therefore tests whether AAM improves general multi-turn planning and error recovery rather than format memorization.
 
-The dataset is also published as a standalone Hugging Face Dataset for browser-based inspection and dataset-native loading: **[clawLooop/clawloop-data](https://huggingface.co/datasets/clawLooop/clawloop-data)**. The Hugging Face mirror contains the same 6,970-task `tasks.jsonl` release and exposes it as the `default` configuration with a `train` split.
+| Method | BFCL-v3 Overall | τ² Retail | τ² Airline | τ² Telecom |
+| --- | ---: | ---: | ---: | ---: |
+| Gemini-3-Pro | 60.75 | 75.90 | 80.50 | 91.00 |
+| Claude Sonnet 4.5 | 61.37 | 72.40 | 72.00 | 84.90 |
+| Qwen3-235B-Think | 42.75 | 71.90 | 58.60 | 47.30 |
+| Kimi-K2-Instruct | 45.88 | 70.60 | 56.50 | 65.80 |
+| Qwen3.5-9B Base | 44.00 ± 0.4 | 35.14 ± 0.3 | 32.00 ± 0.5 | 15.79 ± 0.2 |
+| Qwen3.5-9B + GRPO | 45.60 ± 0.3 | 36.18 ± 0.4 | 34.00 ± 0.3 | 17.93 ± 0.2 |
+| **Qwen3.5-9B + AAM (ours)** | **48.75 ± 0.2** | **38.23 ± 0.3** | **37.94 ± 0.2** | **22.15 ± 0.1** |
+
+#### Scale comparison with AAM
+
+| Model / method | BFCL-v3 Overall | τ² Retail | τ² Airline | τ² Telecom |
+| --- | ---: | ---: | ---: | ---: |
+| Qwen3.5-2B | 31.50 ± 0.5 | 25.44 ± 0.4 | 16.00 ± 0.6 | 35.96 ± 0.5 |
+| Qwen3.5-2B + AAM | **40.50 ± 0.3** | **31.30 ± 0.3** | **27.25 ± 0.4** | **48.01 ± 0.3** |
+| Qwen3.5-4B | 44.25 ± 0.4 | 38.60 ± 0.3 | 30.00 ± 0.3 | 49.12 ± 0.4 |
+| Qwen3.5-4B + AAM | **48.50 ± 0.2** | **41.37 ± 0.2** | **35.31 ± 0.2** | **54.81 ± 0.2** |
+| Qwen3.5-27B | 61.00 ± 0.3 | 64.91 ± 0.2 | 72.00 ± 0.3 | 73.68 ± 0.2 |
+| Qwen3.5-27B + AAM | **64.50 ± 0.1** | **67.19 ± 0.2** | **76.38 ± 0.1** | **78.37 ± 0.1** |
+
+The 9B AAM improvement over standard GRPO is +3.15 points on BFCL-v3 and +3.33 points on τ²-bench Overall when the paper's aggregate comparison is used. Gains are especially visible on the longer Airline and Telecom domains.
+
+### 6.3 AAM ablation
+
+The ablation is on Qwen3.5-9B and reports average in-domain success rate across the three Claw-style benchmarks.
+
+| Variant | Average SR (%) | Change vs. full AAM |
+| --- | ---: | ---: |
+| **AAM (full)** | **57.20** | — |
+| without looping mask | 56.90 | −0.30 |
+| without redundant-action mask | 53.10 | −4.10 |
+| without truncation mask | 56.80 | −0.40 |
+| without error mask | 53.40 | −3.80 |
+| Symmetric masking | 50.90 | −6.30 |
+| Random masking | 51.70 | −5.50 |
+
+The result separates two effects. First, redundant actions and tool errors are the most damaging ineffective-turn classes. Second, the advantage asymmetry is essential: preserving negative gradients lets the model learn avoidance, whereas always zeroing the same spans discards useful failure information.
+
+### 6.4 Systems and inference efficiency
+
+| Quantity | Product harness / baseline | ClawLoop + GRPO | ClawLoop + AAM |
+| --- | ---: | ---: | ---: |
+| Training episode time | 64.5 s | 7.3 s | 6.9 s |
+| Mean GPU utilization | 14% | 33% | 49% |
+| Environment-side speedup | 1× | 8.8× | — |
+| Qwen3.5-27B inference | — | — | 66.4% SR at 5.7K tokens/episode |
+
+The paper's central systems conclusion is that removing product-runtime overhead supplies the dominant throughput gain, while AAM further shortens trajectories and improves utilization by preventing wasteful behavior from being reinforced. At inference time, the 27B AAM model reaches 66.4% success with 5.7K tokens per episode, compared with the reported GPT-5 reference of 67.2%.
+
+## Reproduction
+
+### Dataset
+
+The release contains 6,970 valid task records from a 7,056-record source export. Each record includes `task_id`, `prompt`, `task_yaml`, `env_builder`, `verifier`, a validation manifest, and canonical source-file fields. All released records pass the strict export checks and environment-builder smoke tests.
+
+For Hub-native loading:
 
 ```python
 from datasets import load_dataset
@@ -199,27 +329,17 @@ from datasets import load_dataset
 tasks = load_dataset("clawLooop/clawloop-data", split="train")
 ```
 
-## Model Use
-
-### Environment Setup
-
-Validate the release without executing any task code:
+For local restoration:
 
 ```bash
+git lfs install
 python scripts/validate_release.py data/tasks.jsonl
-```
-
-Restore the JSONL into the directory layout expected by the ClawLoop runtime:
-
-```bash
 python scripts/restore_hf_dataset.py \
   data/tasks.jsonl \
   --output-dir /tmp/clawloop_tasks
 ```
 
-The restore operation writes files only. It never imports or executes `env_builder.py` or a verifier. The resulting tree contains both the canonical `tasks/data_*` and `scripts/data_*/verify_workplace.py` layout and the manifest-relative files needed by flat-layout discovery.
-
-To regenerate the JSONL from the original restored task folders:
+The restore script writes files only; it does not import or execute task builders or verifiers. To regenerate JSONL from a restored task tree:
 
 ```bash
 python scripts/prepare_hf_dataset.py \
@@ -227,121 +347,40 @@ python scripts/prepare_hf_dataset.py \
   data/tasks.jsonl
 ```
 
-### Training
-
-This release vendors the **complete modified VERL checkout** under [`verl/`](verl/). ClawLoop workspace tools, verifier-based rewards, multi-turn agent-loop support, Qwen3.5 model support, and AAM-related trainer changes are already integrated into that tree. There is no separate patch application step and no external recipe checkout to assemble.
-
-Install the bundled framework in editable mode:
+### Install the integrated VERL tree
 
 ```bash
-cd /path/to/nanoclaw_hf/verl
+cd /path/to/clawloop/verl
 pip install -e .
 ```
 
-Restore the task JSONL first (as shown above), then launch the validated profiles directly from the integrated VERL tree:
+No patch application, external recipe checkout, or `VERL_ROOT` variable is required. The complete framework and ClawLoop integration are already present under `verl/`.
+
+### Train with the reference 9B and 27B profiles
 
 ```bash
-cd /path/to/nanoclaw_hf/verl
+cd /path/to/clawloop/verl
 BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-9B \
 bash nanoclaw_recipe/train_9b.sh
 ```
 
-For the 27B profile:
-
 ```bash
-cd /path/to/nanoclaw_hf/verl
+cd /path/to/clawloop/verl
 BASE_TASKS=/tmp/clawloop_tasks \
 MODEL_PATH=/path/to/Qwen3.5-27B \
 bash nanoclaw_recipe/train_27b.sh
 ```
 
-Both profiles preserve the paper-aligned defaults: 8,192 prompt tokens, 22,768 response tokens, 16,384 assistant tokens, 8,192 tool-observation tokens, 35 turns, FSDP2, async vLLM rollout, Qwen3-Coder multi-turn formatting, GRPO with fixed low-variance KL, eight responses per prompt, and AAM enabled. Override hardware and experiment settings through environment variables or extra Hydra arguments. The integrated [`nanoclaw_recipe/train_half_turn.sh`](verl/nanoclaw_recipe/train_half_turn.sh) remains the lower-level launcher; it contains the historical NPU/ModelArts setup path and can be adapted for a pre-provisioned cluster.
+The reference profiles use the paper-aligned multi-turn setup: 8,192 prompt tokens, 22,768 response tokens, 16,384 assistant tokens, 8,192 tool-observation tokens, 35 turns, FSDP2, asynchronous vLLM rollout, Qwen3-Coder formatting, GRPO, eight responses per prompt, and AAM enabled. Hardware-specific paths and Hydra overrides can be supplied through environment variables or command-line arguments.
 
-CPU regression tests for masking and final-answer behavior are included in [`verl/tests/recipe/nanoclaw/`](verl/tests/recipe/nanoclaw/). The Python package is located at `verl/nanoclaw_recipe` inside the bundled checkout; the directory name is retained as an internal compatibility identifier while `ClawLoop` is the formal public project name.
-
-### Inference
-
-The runtime-only path is implemented in [ClawLoop inference](verl/nanoclaw_recipe/inference.py). It reuses the same task discovery, multi-turn tool loop, workspace isolation, and Qwen3-Coder formatting as training, but does not call the task verifier during rollout. Evaluation can therefore be performed independently after trajectories are collected.
-
-## Paper and Figure Gallery
-
-### Figure 1 · ClawLoop rollout architecture
-
-![ClawLoop architecture](paper/harness_draft.png)
-
-The rollout path keeps only the components that affect learning: an isolated per-episode workspace, atomic file/shell tools, multi-turn observations, a terminal-state verifier, and a direct policy update through VERL. Product-layer services such as session management, plugin registries, long-term memory, and multi-agent orchestration are removed from the critical path. This boundary is the source of the reported 8.8× reduction in environment overhead; AAM then filters positive policy-gradient updates on ineffective turns while preserving negative signals.
-
-[Original figure PDF](paper/figure1.pdf)
-
-### Figure 2 · Token-level Asymmetric Advantage Masking
-
-![Asymmetric Advantage Masking](paper/previews/clawAgent_main.png)
-
-This diagram shows the mechanism behind AAM. The environment first marks four deterministic ineffective patterns—internal loops, redundant actions, truncations, and tool errors. The masking decision is then conditioned on the trajectory advantage: ineffective tokens are removed from a positive-advantage update, but remain active when the advantage is negative. Standard GRPO assigns the same trajectory-level signal to both useful and ineffective tokens; AAM breaks that erroneous positive reinforcement without changing the verifier reward or the autoregressive context.
-
-[Original method figure PDF](paper/clawAgent_main.pdf)
-
-### Figure 3 · GRPO training collapse and credit misassignment
-
-![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
-
-On Qwen3.5-9B, standard GRPO briefly reaches a high success rate and then collapses. The collapse is accompanied by a sharp rise in ineffective interactions—redundant actions, tool errors, truncations, and internal loops—and by positive-gradient mass being assigned to those ineffective tokens. The paper reports a strong anti-phase relationship between success and ineffective-interaction rate (Pearson ρ = −0.83; Spearman ρ = −0.90), with the misassigned positive-gradient rate reaching approximately 0.20 in the collapse region.
-
-[Original figure PDF](paper/grpo_three_figures_combined.pdf)
-
-![GRPO versus AAM (alternate export)](paper/previews/grpo_three_figures_combined-Copy1.png)
-
-The alternate export overlays AAM and GRPO directly. AAM continues improving after the GRPO collapse point, keeps ineffective interactions low, and holds positive-gradient misassignment near its early-training level. The resulting learning signal is concentrated on actions that advance the task rather than on merely successful but wasteful trajectories.
-
-[Alternate figure PDF](paper/grpo_three_figures_combined-Copy1.pdf)
-
-### Figure 4 · Environment-side cost of in-harness rollouts
-
-![In-harness environment cost](paper/previews/fig_cost.png)
-
-In the controlled OpenClaw comparison, environment execution consumes 54.1 s of a 57.5 s in-harness episode (94% of wall-clock time), compared with 2.5 s of environment time in tool-only mode. The full episode is therefore 9.7× slower, while mean GPU utilization falls from 61% to 14%. The result identifies CPU/IO-bound harness work—not model computation—as the dominant throughput bottleneck.
-
-[Original figure PDF](paper/fig_cost.pdf)
-
-### Figure 5 · Training-side efficiency after removing the bottleneck
-
-![Training efficiency](paper/previews/fig_train_eff.png)
-
-With identical training settings, OpenClaw + GRPO takes 67.9 s per episode, ClawLoop + GRPO takes 7.3 s, and ClawLoop + AAM takes 6.9 s. Mean GPU utilization rises from 14% to 33% with the lightweight harness and to 49% when AAM suppresses redundant interactions. The figure shows that ClawLoop supplies the main systems-level speedup, while AAM further removes wasted rollout work.
-
-[Original figure PDF](paper/fig_train_eff.pdf)
-
-### Figure 6 · Inference success versus token consumption
-
-![Token efficiency](paper/previews/fig_token_sr.png)
-
-The plot compares success rate with average generated tokens per episode across model scales. ClawLoop + AAM moves the models toward the more desirable lower-right regime: higher success with fewer tokens than the corresponding base models. At 27B, AAM reaches 66.4% success with 5.7K tokens per episode, approaching GPT-5's 67.2% success while using substantially less generation. This supports the paper's conclusion that better credit assignment improves behavioral efficiency, not only training stability.
-
-[Original figure PDF](paper/fig_token_sr.pdf)
-
-## Acknowledgement
-
-We thank the [VERL](https://github.com/volcengine/verl) project for providing the distributed reinforcement-learning infrastructure on which the integrated ClawLoop implementation is based.
-
-## Uploading to the Hub
-
-This directory is the intended upload root. It contains the complete modified VERL source tree under `verl/`, in addition to the ClawLoop data and paper artifacts. Do not upload the parent workspace, which contains unrelated source exports and experiment files.
-
-```bash
-cd /home/hyx/hf_up/nanoclaw_hf
-git lfs install
-hf repo create <namespace>/clawloop-tasks --repo-type dataset
-hf upload <namespace>/clawloop-tasks . . --repo-type dataset
-```
-
-The 142MB JSONL file is configured for Git LFS through `.gitattributes`. A Hub Dataset repository is recommended for the task-only mirror; this project snapshot is a code-and-data release whose `verl/` directory can be used directly after installation.
+Regression tests for masking and final-answer behavior are in [`verl/tests/recipe/nanoclaw/`](verl/tests/recipe/nanoclaw/).
 
 ## Safety and licensing
 
-Verifiers and environment builders are arbitrary benchmark code. Run them only in a container with network isolation, resource limits, and a disposable filesystem. The validator reports eight absolute-path warnings inherited from synthetic task content; these are example paths inside task fixtures, not paths used by the release tooling.
+Environment builders and verifiers are benchmark code and should be run only in a disposable container with network isolation, resource limits, and a temporary filesystem. The validator reports eight absolute-path warnings inherited from synthetic task content; these are fixture examples, not paths used by release tooling.
 
-ClawLoop-specific code and documentation are MIT licensed. VERL-derived integration files remain subject to the upstream Apache-2.0 license. The AAAI author-kit files and the source benchmark export may have additional redistribution terms; review [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) before making the Hub repository public.
+ClawLoop-specific code and documentation are MIT licensed. VERL-derived files remain subject to the upstream Apache-2.0 license. AAAI author-kit files and source benchmark exports may carry additional redistribution terms; review [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) before redistributing the repository.
 
 ## Citation
 
