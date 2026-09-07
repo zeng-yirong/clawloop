@@ -185,31 +185,23 @@ flowchart LR
 
 ### 5.2 Training figures
 
-The PNGs below are checked-in previews so that GitHub renders the figures directly. Each caption describes the paper's claim; the adjacent PDF is the authoritative full-resolution asset.
+The figures below are taken directly from the paper and are included here with captions that explain the corresponding experimental finding.
 
 #### Figure 1 — ClawLoop architecture
 
-![ClawLoop architecture](paper/previews/figure1.png)
+![ClawLoop architecture](paper/clawAgent_main.pdf)
 
 The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
-
-[Full-resolution figure PDF](paper/figure1.pdf)
 
 #### Figure 2 — GRPO training dynamics and credit misassignment
 
 ![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
-
-On Qwen3.5-9B, standard GRPO first improves and then collapses. The collapse tracks a rise in ineffective interactions and positive-gradient mass assigned to them: the paper reports the misassignment signal increasing from approximately 0.04 early in training to approximately 0.20 after the success peak. Success and ineffective-interaction rate are strongly anti-correlated (Pearson ρ = −0.83; Spearman ρ = −0.90).
-
-[Full-resolution figure PDF](paper/grpo_three_figures_combined.pdf) · [Alternate export](paper/previews/grpo_three_figures_combined-Copy1.png)
 
 #### Figure 3 — Environment and training efficiency
 
 ![Environment cost](paper/previews/fig_cost.png)
 
 The controlled comparison isolates the systems bottleneck. Product-harness GRPO spends 64.5 seconds per episode in environment execution, while ClawLoop reduces this to 7.3 seconds; adding AAM reduces it further to 6.9 seconds by suppressing wasteful turns. Mean GPU utilization rises from 14% to 33% with ClawLoop + GRPO and to 49% with ClawLoop + AAM.
-
-[Environment-cost PDF](paper/fig_cost.pdf) · [Training-efficiency PDF](paper/fig_train_eff.pdf)
 
 ![Training efficiency](paper/previews/fig_train_eff.png)
 
@@ -218,8 +210,6 @@ The controlled comparison isolates the systems bottleneck. Product-harness GRPO 
 ![Token efficiency](paper/previews/fig_token_sr.png)
 
 The inference plot measures whether the training improvement also changes behavior at test time. AAM-trained models move toward higher success with fewer generated tokens. At 27B, the paper reports 66.4% success with 5.7K tokens per episode, close to the 67.2% success reported for GPT-5 while using substantially fewer generated tokens.
-
-[Full-resolution figure PDF](paper/fig_token_sr.pdf)
 
 #### Figure 5 — Manuscript and supplementary visual record
 
