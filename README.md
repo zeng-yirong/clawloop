@@ -1,23 +1,4 @@
----
-license: mit
-language:
-  - en
-  - zh
-task_categories:
-  - reinforcement-learning
-  - text-generation
-tags:
-  - autonomous-agents
-  - tool-use
-  - agentic-rl
-  - grpo
-  - react
-  - verifiable-rewards
-  - clawloop
-size_categories:
-  - 10K<n<100K
-pretty_name: ClawLoop Verifiable Agent RL Tasks
----
+
 
 <div align="center">
 <h1>ClawLoop: Less Harness, More Signal</h1>
