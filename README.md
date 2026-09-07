@@ -189,7 +189,7 @@ The figures below are taken directly from the paper and are included here with c
 
 #### Figure 1 — ClawLoop architecture
 
-![ClawLoop architecture](paper/clawAgent_main.pdf)
+![ClawLoop architecture](paper/previews/figure1.png)
 
 The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
 
@@ -210,12 +210,6 @@ The controlled comparison isolates the systems bottleneck. Product-harness GRPO 
 ![Token efficiency](paper/previews/fig_token_sr.png)
 
 The inference plot measures whether the training improvement also changes behavior at test time. AAM-trained models move toward higher success with fewer generated tokens. At 27B, the paper reports 66.4% success with 5.7K tokens per episode, close to the 67.2% success reported for GPT-5 while using substantially fewer generated tokens.
-
-#### Figure 5 — Manuscript and supplementary visual record
-
-![Manuscript preview](paper/previews/clawAgent_main.png)
-
-The repository also includes the manuscript preview and every source figure used in the paper: [`paper/`](paper/), including `fig_cost2.png`, both GRPO exports, the harness draft, and the PNG preview directory. The PDFs remain available for printing and camera-ready inspection.
 
 ## 6. Results
 
