@@ -189,7 +189,7 @@ The figures below are taken directly from the paper and are included here with c
 
 #### Figure 1 — ClawLoop architecture
 
-![ClawLoop architecture](paper/previews/figure1.png)
+![ClawLoop architecture](paper/clawAgent_main.pdf)
 
 The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
 
@@ -199,17 +199,9 @@ The architecture keeps the task specification, isolated mutable workspace, atomi
 
 #### Figure 3 — Environment and training efficiency
 
-![Environment cost](paper/previews/fig_cost.png)
-
 The controlled comparison isolates the systems bottleneck. Product-harness GRPO spends 64.5 seconds per episode in environment execution, while ClawLoop reduces this to 7.3 seconds; adding AAM reduces it further to 6.9 seconds by suppressing wasteful turns. Mean GPU utilization rises from 14% to 33% with ClawLoop + GRPO and to 49% with ClawLoop + AAM.
 
 ![Training efficiency](paper/previews/fig_train_eff.png)
-
-#### Figure 4 — Inference success versus token consumption
-
-![Token efficiency](paper/previews/fig_token_sr.png)
-
-The inference plot measures whether the training improvement also changes behavior at test time. AAM-trained models move toward higher success with fewer generated tokens. At 27B, the paper reports 66.4% success with 5.7K tokens per episode, close to the 67.2% success reported for GPT-5 while using substantially fewer generated tokens.
 
 ## 6. Results
 
