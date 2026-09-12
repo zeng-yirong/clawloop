@@ -1,5 +1,3 @@
-
-
 <div align="center">
 <h1>Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents</h1>
 
@@ -10,9 +8,9 @@
 [![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 </div>
 
-<br>
+---
 
-## 1. Overview
+## 1. 📖 Overview
 
 ClawLoop is a lightweight, verifiable RL framework for long-horizon tool-using agents. It accompanies the paper *Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents* and releases the modified VERL tree, the 6,970-task corpus, the paper artifacts, and the training launchers in one repository.
 
@@ -28,18 +26,9 @@ The release also integrates **Asymmetric Advantage Masking (AAM)** into VERL: in
 
 The dataset is on the Hugging Face Hub: **[clawLooop/clawloop-data](https://huggingface.co/datasets/clawLooop/clawloop-data)**. The repository mirror carries the same JSONL release through Git LFS.
 
-## 2. Contents
+---
 
-| Section | What to find here |
-| --- | --- |
-| [1. Overview](#1-overview) | Research goal and central idea. |
-| [2. Contents](#2-contents) | This repository guide. |
-| [3. Project structure](#3-project-structure) | The GitHub tree and the role of each directory. |
-| [4. Main components](#4-main-components) | The ClawLoop framework and the AAM method. |
-| [5. Training process and figure record](#5-training-process-and-figure-record) | Rollout/training lifecycle and all directly rendered paper figures. |
-| [Reproduction](#reproduction) | Dataset preparation, installation, and 9B/27B launch commands. |
-
-## 3. Project structure
+## 2. 📁 Project structure
 
 ```text
 clawloop/
@@ -75,15 +64,17 @@ clawloop/
     └── nanoclaw_recipe/train_27b.sh  # Qwen3.5-27B reference launch
 ```
 
-## 4. Main components
+---
+
+## 3. 🧩 Main components
 
 #### Figure 1 — ClawLoop architecture
 
-![ClawLoop architecture and AAM](paper/previews/clawAgent_main.png)
+<p align="center"><img src="paper/previews/clawAgent_main.png" alt="ClawLoop architecture and AAM" width="820"></p>
 
 The architecture keeps the task specification, isolated mutable workspace, atomic tools, multi-turn observations, and terminal verifier inside the policy-gradient loop. Session management, plugin discovery, long-term memory, and external service orchestration are removed from the learning-critical path.
 
-### 4.1 ClawLoop framework
+### 3.1 ClawLoop framework
 
 ClawLoop is a training-oriented workspace harness. A task record supplies a prompt, an environment builder, and a verifier. The builder creates the initial files in a disposable per-rollout workspace; the agent then explores and edits that workspace through guarded tools; the verifier inspects the final state and emits the reward.
 
@@ -107,31 +98,35 @@ The safety boundary is explicit:
 
 The environment builder has a 120-second default timeout; verifier execution has a 300-second default timeout. Builder and verifier output is captured, score files are checked in the expected locations, and failed or missing verifiers receive an explicit fallback status. Memory operations and product-runtime state are not part of the local learning loop.
 
-### 4.2 Asymmetric Advantage Masking (AAM)
+### 3.2 Asymmetric Advantage Masking (AAM)
 
 In standard GRPO, all policy-generated tokens in a sampled trajectory inherit the same standardized group advantage. A successful episode can therefore reinforce a useful edit together with redundant reads, repeated tool results, error calls, internal loops, or a truncated final response.
 
 AAM records candidate ineffective spans during rollout and applies the advantage condition after GRPO computes the trajectory advantage. The current detector covers four deterministic patterns: looping responses, duplicate tool-result turns, error tool results, and a final assistant turn cut off by the response budget. The mask formulation and ablation are in the paper.
 
-## 5. Training process and figure record
+---
 
-### 5.1 End-to-end training lifecycle
+## 4. 📊 Training process and figure record
+
+### 4.1 End-to-end training lifecycle
 
 A task JSONL is resolved into a per-rollout workspace, the policy acts through guarded atomic tools, the terminal verifier scores the resulting workspace, and VERL applies the GRPO advantage with the AAM actor mask before updating the policy. The paper gives the stage-by-stage breakdown.
 
-### 5.2 Training figures
+### 4.2 Training figures
 
-The figures below are taken directly from the paper.
+Figures 2 and 3 are taken directly from the paper; Figure 1 appears in **Main components**.
 
 #### Figure 2 — GRPO training dynamics and credit misassignment
 
-![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
+<p align="center"><img src="paper/previews/grpo_three_figures_combined.png" alt="GRPO training dynamics" width="820"></p>
 
 #### Figure 3 — Environment and training efficiency
 
-![Training efficiency](paper/previews/fig_train_eff.png)
+<p align="center"><img src="paper/previews/fig_train_eff.png" alt="Training efficiency" width="820"></p>
 
-## Reproduction
+---
+
+## 5. 🚀 Reproduction
 
 ### Dataset
 

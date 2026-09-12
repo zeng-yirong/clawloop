@@ -1,15 +1,16 @@
-
-
 <div align="center">
 <h1>Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents</h1>
 
-[![英文 README](https://img.shields.io/badge/README-English-4d8cd8?style=for-the-badge)](README.md)
 [![论文](https://img.shields.io/badge/论文-PDF-5f16a8?style=for-the-badge)](paper/paper.pdf)
+[![英文 README](https://img.shields.io/badge/README-English-4d8cd8?style=for-the-badge)](README.md)
 [![数据集](https://img.shields.io/badge/数据集-6%2C970%20任务-ffd21e?style=for-the-badge&logo=huggingface&logoColor=white)](https://huggingface.co/datasets/clawLooop/clawloop-data)
 [![集成版 VERL](https://img.shields.io/badge/代码-集成版%20VERL%20%2B%20AAM-63cad3?style=for-the-badge)](verl/)
+[![License](https://img.shields.io/badge/License-MIT-2ea44f?style=for-the-badge&logo=opensourceinitiative&logoColor=white)](LICENSE)
 </div>
 
-## 1. 项目概览
+---
+
+## 1. 📖 项目概览
 
 ClawLoop 是一个面向长程、工具使用型智能体的轻量化可验证强化学习框架。项目对应论文《Less Harness, More Signal: Efficient In-Harness RL for Autonomous Agents》，公开了完整修改版 VERL、6,970 条任务数据、论文图表和 9B/27B 训练脚本。
 
@@ -25,18 +26,9 @@ ClawLoop 是一个面向长程、工具使用型智能体的轻量化可验证�
 
 数据集可直接从 Hugging Face 加载：**[clawLooop/clawloop-data](https://huggingface.co/datasets/clawLooop/clawloop-data)**。
 
-## 2. 目录导航
+---
 
-| 部分 | 内容 |
-| --- | --- |
-| [项目概览](#1-项目概览) | 研究目标与核心思想 |
-| [目录导航](#2-目录导航) | 文档索引 |
-| [项目结构](#3-项目结构) | GitHub 仓库文件说明 |
-| [主要内容](#4-主要内容) | ClawLoop 框架和 AAM 方法 |
-| [训练过程与图片](#5-训练过程与图片) | rollout 生命周期和论文图示 |
-| [复现训练](#复现训练) | 数据准备、安装和训练命令 |
-
-## 3. 项目结构
+## 2. 📁 项目结构
 
 ```text
 clawloop/
@@ -73,15 +65,17 @@ clawloop/
     └── nanoclaw_recipe/train_27b.sh  # Qwen3.5-27B 训练脚本
 ```
 
-## 4. 主要内容
+---
+
+## 3. 🧩 主要内容
 
 #### 图 1：ClawLoop 架构与 AAM
 
-![ClawLoop 与 AAM Agent Loop](paper/previews/clawAgent_main.png)
+<p align="center"><img src="paper/previews/clawAgent_main.png" alt="ClawLoop 与 AAM Agent Loop" width="820"></p>
 
 图中保留任务描述、独立工作区、原子工具、多轮观察和终态验证器，移除 session 管理、插件发现、长期记忆和外部服务编排。
 
-### 4.1 ClawLoop 框架
+### 3.1 ClawLoop 框架
 
 一次 rollout 由任务记录、环境构建器和终态验证器共同定义：
 
@@ -105,31 +99,35 @@ clawloop/
 
 环境构建器默认超时 120 秒，verifier 默认超时 300 秒。builder 和 verifier 的输出会被捕获，分数文件会在预期位置检查；失败或缺失的 verifier 会产生明确的 fallback 状态。
 
-### 4.2 AAM 方法
+### 3.2 AAM 方法
 
 标准 GRPO 为一条轨迹中的所有策略 token 使用同一个 group advantage。因此，一条成功轨迹中的冗余读取、重复工具结果、错误调用或截断输出，也可能与真正有用的编辑一起被强化。
 
 AAM 在 rollout 阶段记录无效交互区间，在 GRPO 计算优势之后再应用掩码。当前实现检测四类模式：内部循环、重复工具结果、工具错误，以及达到 response budget 后被截断的最后 assistant turn。掩码公式和消融结果见论文。
 
-## 5. 训练过程与图片
+---
 
-### 5.1 训练流程
+## 4. 📊 训练过程与图片
+
+### 4.1 训练流程
 
 任务 JSONL 被解析为每条 rollout 的独立工作区，模型通过受限原子工具进行多轮交互，回合结束后由终态验证器对工作区打分，VERL 计算 GRPO 优势并应用 AAM mask 后更新策略。分阶段的详细说明见论文。
 
-### 5.2 论文图片记录
+### 4.2 论文图片记录
 
-以下图片直接取自论文。
+图 2 和图 3 直接取自论文；图 1 见**主要内容**。
 
 #### 图 2：GRPO 训练动态与信用分配
 
-![GRPO training dynamics](paper/previews/grpo_three_figures_combined.png)
+<p align="center"><img src="paper/previews/grpo_three_figures_combined.png" alt="GRPO training dynamics" width="820"></p>
 
 #### 图 3：训练效率
 
-![Training efficiency](paper/previews/fig_train_eff.png)
+<p align="center"><img src="paper/previews/fig_train_eff.png" alt="Training efficiency" width="820"></p>
 
-## 复现训练
+---
+
+## 5. 🚀 复现训练
 
 ### 数据准备
 
